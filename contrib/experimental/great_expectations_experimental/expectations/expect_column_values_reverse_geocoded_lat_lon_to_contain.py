@@ -1,15 +1,10 @@
-
-from math import cos, pi, sqrt
 from typing import Any, List, Optional, Union
 
 import geopandas
 from shapely.geometry import Point
 
 from great_expectations.core import ExpectationValidationResult
-from great_expectations.execution_engine import (
-    PandasExecutionEngine,
-    SparkDFExecutionEngine,
-)
+from great_expectations.execution_engine import PandasExecutionEngine
 from great_expectations.expectations.expectation import (
     ColumnMapExpectation,
     ExpectationConfiguration,
@@ -19,7 +14,6 @@ from great_expectations.expectations.metrics import (
     ColumnMapMetricProvider,
     column_condition_partial,
 )
-from great_expectations.expectations.metrics.import_manager import F, sparktypes
 from great_expectations.expectations.util import render_evaluation_parameter_string
 from great_expectations.render.renderer.renderer import renderer
 from great_expectations.render.types import (
@@ -37,22 +31,27 @@ class ColumnValuesReverseGeocodedLatLonContain(ColumnMapMetricProvider):
 
     # This is the id string that will be used to reference your metric.
     condition_metric_name = "column_values.reverse_geocoded_lat_lon_contain"
-    condition_value_keys = ("word", "provider", )
+    condition_value_keys = (
+        "word",
+        "provider",
+    )
 
     # This method implements the core logic for the PandasExecutionEngine
     @column_condition_partial(engine=PandasExecutionEngine)
     def _pandas(cls, column, word, provider=None, **kwargs):
         column = column.apply(Point)
+
         def reverse(point):
-            #lat lon to lon lat for reverse_geocode
+            # lat lon to lon lat for reverse_geocode
             return Point(point.y, point.x)
+
         column = column.apply(reverse)
         reverse_geocoded_column = column.apply(geopandas.tools.reverse_geocode)
 
-        #check if lowercase reverse geocoded string contains word
-        return reverse_geocoded_column.apply(lambda x: word in x["address"].values[0].lower())
-
-
+        # check if lowercase reverse geocoded string contains word
+        return reverse_geocoded_column.apply(
+            lambda x: word in x["address"].values[0].lower()
+        )
 
 
 # This class defines the Expectation itself
@@ -97,14 +96,9 @@ class ExpectColumnValuesReverseGeocodedLatLonToContain(ColumnMapExpectation):
         word = configuration.kwargs["word"]
 
         try:
-            assert (
-                word is not None
-            ), "word must be provided"
-            assert (
-                isinstance(word, str)
-            ), "word must be a string"
-            assert ( word.islower() 
-            ), "word must be a lowercase string"
+            assert word is not None, "word must be provided"
+            assert isinstance(word, str), "word must be a string"
+            assert word.islower(), "word must be a lowercase string"
         except AssertionError as e:
             raise InvalidExpectationConfigurationError(str(e))
 
@@ -114,10 +108,10 @@ class ExpectColumnValuesReverseGeocodedLatLonToContain(ColumnMapExpectation):
         {
             "data": {
                 "lat_lon_in_new_york": [
-                    (40.583455700, -74.149604800 ) , 
-                    (40.713507800,-73.828313200 )    ,
-                    (40.652600600,-73.949721100)    ,   
-                    (40.789623900, -73.959893900 )     , 
+                    (40.583455700, -74.149604800),
+                    (40.713507800, -73.828313200),
+                    (40.652600600, -73.949721100),
+                    (40.789623900, -73.959893900),
                     (40.846650800, -73.878593700),
                 ],
             },
@@ -153,7 +147,11 @@ class ExpectColumnValuesReverseGeocodedLatLonToContain(ColumnMapExpectation):
     map_metric = "column_values.reverse_geocoded_lat_lon_contain"
 
     # This is a list of parameter names that can affect whether the Expectation evaluates to True or False
-    success_keys = ("mostly", "word", "provider",)
+    success_keys = (
+        "mostly",
+        "word",
+        "provider",
+    )
 
     # This dictionary contains default values for any parameters that should have default values
     default_kwarg_values = {
@@ -240,4 +238,3 @@ class ExpectColumnValuesReverseGeocodedLatLonToContain(ColumnMapExpectation):
 
 if __name__ == "__main__":
     ExpectColumnValuesReverseGeocodedLatLonToContain().print_diagnostic_checklist()
-
